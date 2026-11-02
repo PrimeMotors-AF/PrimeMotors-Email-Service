@@ -1,3 +1,4 @@
+
 import os
 import smtplib
 from email.message import EmailMessage
@@ -30,11 +31,12 @@ def send_proposal_created_email(data: ProposalCreatedModel) -> None:
             f"Configurações SMTP ausentes: {', '.join(missing_settings)}"
         )
 
+    proposal = data.data.proposal
+    user = data.data.user
+    car = data.data.car
+
     message = EmailMessage()
-    message["Subject"] = (
-        f"Nova proposta recebida - {data.vehicle.brand} "
-        f"{data.vehicle.model}"
-    )
+    message["Subject"] = f"Nova proposta recebida - {car.name}"
     message["From"] = sender_email
     message["To"] = recipient_email
 
@@ -42,13 +44,17 @@ def send_proposal_created_email(data: ProposalCreatedModel) -> None:
         f"""
 Uma nova proposta foi criada no Prime Motors.
 
-ID da proposta: {data.proposal_id}
+ID da proposta: {proposal.id}
 
-Cliente: {data.user.name}
-E-mail do cliente: {data.user.email}
+Cliente: {user.name}
+E-mail do cliente: {user.email}
 
-Veículo: {data.vehicle.brand} {data.vehicle.model}
-Ano: {data.vehicle.year}
+Veículo: {car.name}
+
+Valor oferecido: R$ {proposal.offeredValue}
+Mensagem: {proposal.message or "Nenhuma mensagem informada"}
+
+Data da proposta: {proposal.createdAt}
 """.strip()
     )
 
