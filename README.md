@@ -25,6 +25,15 @@ uma repetição do evento tente novamente somente mensagens ainda pendentes. As
 respostas também informam `RateLimit-Limit`, `RateLimit-Remaining`,
 `RateLimit-Reset` e `RateLimit-Policy`.
 
+O envio também usa Redis para adquirir um lock atômico por proposta (`SET NX`)
+com TTL de 120 segundos, evitando que réplicas processem a mesma proposta ao
+mesmo tempo. Após o SMTP aceitar cada mensagem, o serviço grava uma chave de
+sucesso separada para cliente/equipe, com TTL de 35 dias. Se a atualização no
+MySQL falhar depois do envio, essa chave permite reconciliar o estado sem enviar
+novamente. Os indicadores no MySQL continuam sendo o registro durável; a
+idempotência não pode eliminar totalmente a janela de falha entre a aceitação
+do e-mail pelo SMTP e a gravação do sucesso no Redis.
+
 O consumer Redis usa o grupo `email-service`, recupera mensagens pendentes e
 confirma com `XACK` somente depois do processamento. Para manter dados pessoais
 fora do Stream, consulta uma rota interna autenticada do backend para obter o

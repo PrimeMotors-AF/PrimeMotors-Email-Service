@@ -2,10 +2,18 @@
 import logging
 
 from fastapi import HTTPException, Response, status
+from redis import Redis
 
 from src.database.connection import SessionLocal
 from src.models.emailModel import ProposalCreatedModel
 from src.models.proposalModel import Proposal
+from src.services.emailIdempotencyService import (
+    EmailIdempotencyUnavailable,
+    EmailProcessingInProgress,
+    cache_email_sent,
+    email_was_sent,
+    lock_proposal_email_processing,
+)
 from src.services.emailRateLimitService import (
     EmailRateLimitExceeded,
     reserve_email_sends,
@@ -30,6 +38,29 @@ def handle_proposal_created(
             detail="Evento não suportado.",
         )
 
+    try:
+        with lock_proposal_email_processing(data.data.proposal.id) as redis:
+            return _process_proposal_created(data, response, redis)
+    except EmailProcessingInProgress as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="A proposta já está sendo processada.",
+            headers={"Retry-After": "5"},
+        ) from error
+    except EmailIdempotencyUnavailable as error:
+        logger.exception("Email idempotency protection is unavailable")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Não foi possível verificar a proteção contra envios duplicados.",
+            headers={"Retry-After": "5"},
+        ) from error
+
+
+def _process_proposal_created(
+    data: ProposalCreatedModel,
+    response: Response,
+    redis: Redis,
+) -> dict:
     db = SessionLocal()
 
     try:
@@ -64,6 +95,24 @@ def handle_proposal_created(
                 detail="O evento não corresponde ao e-mail registrado para a proposta.",
             )
 
+        cache_reconciled = False
+        if not proposal.customer_email_sent and email_was_sent(
+            redis,
+            proposal_data.id,
+            "customer",
+        ):
+            proposal.customer_email_sent = True
+            cache_reconciled = True
+        if not proposal.notification_email_sent and email_was_sent(
+            redis,
+            proposal_data.id,
+            "internal",
+        ):
+            proposal.notification_email_sent = True
+            cache_reconciled = True
+        if cache_reconciled:
+            db.commit()
+
         if proposal.customer_email_sent and proposal.notification_email_sent:
             return {
                 "message": "Proposta já recebida anteriormente.",
@@ -92,6 +141,7 @@ def handle_proposal_created(
 
         if pending_customer_email:
             send_customer_proposal_email(data, proposal.user_email)
+            cache_email_sent(redis, proposal_data.id, "customer")
             proposal.customer_email_sent = True
             db.commit()
 
@@ -101,8 +151,13 @@ def handle_proposal_created(
                     "Configuração SMTP ausente: PROPOSAL_NOTIFICATION_EMAIL"
                 )
             send_internal_proposal_notification(data, notification_email)
+            cache_email_sent(redis, proposal_data.id, "internal")
             proposal.notification_email_sent = True
             db.commit()
+
+    except EmailIdempotencyUnavailable:
+        db.rollback()
+        raise
 
     except RuntimeError as error:
         db.rollback()
