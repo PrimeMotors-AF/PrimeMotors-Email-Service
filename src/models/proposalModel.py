@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, String, Numeric, Text, DateTime
+from sqlalchemy import Boolean, Column, String, Numeric, Text, DateTime, text
 from sqlalchemy.sql import func
 
 from src.database.connection import Base
@@ -27,5 +27,18 @@ class Proposal(Base):
     message = Column(Text, nullable=True)
 
     date_offer = Column(DateTime, nullable=False)
+
+    customer_email_sent = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("0"),
+    )
+    notification_email_sent = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("0"),
+    )
 
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
