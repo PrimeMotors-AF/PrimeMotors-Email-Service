@@ -1,12 +1,15 @@
 
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from html import escape
 import os
 import smtplib
 from email.message import EmailMessage
+from zoneinfo import ZoneInfo
 
 from src.models.emailModel import ProposalCreatedModel
+
+SAO_PAULO_TIMEZONE = ZoneInfo("America/Sao_Paulo")
 
 
 def _format_brl(value: Decimal) -> str:
@@ -16,7 +19,9 @@ def _format_brl(value: Decimal) -> str:
 
 
 def _format_proposal_date(value: datetime) -> str:
-    return value.strftime("%d/%m/%Y às %H:%M")
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(SAO_PAULO_TIMEZONE).strftime("%d/%m/%Y às %H:%M")
 
 
 def _format_offer_comparison(asking_price: Decimal, offered_value: Decimal) -> str:

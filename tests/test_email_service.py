@@ -35,7 +35,7 @@ def create_proposal_event() -> ProposalCreatedModel:
                 offeredValue="100000.00",
                 message="Gostaria de negociar.",
                 status="Pendente",
-                createdAt="2026-11-06T12:00:00",
+                createdAt="2026-11-11T17:51:00Z",
             ),
             user=UserModel(
                 id="user-1",
@@ -92,7 +92,7 @@ class ProposalEmailServiceTests(unittest.TestCase):
         self.assertIn("Valor anunciado: R$ 110.000,00", text)
         self.assertIn("Valor ofertado: R$ 100.000,00", text)
         self.assertIn("R$ 10.000,00 abaixo do valor anunciado (9,09%)", text)
-        self.assertIn("Data de envio: 06/11/2026 às 12:00", text)
+        self.assertIn("Data de envio: 11/11/2026 às 14:51", text)
         self.assertIn("Agradecemos pelo seu", text)
         self.assertIn("RESUMO DA PROPOSTA", html)
         self.assertIn("R$ 100.000,00", html)
@@ -118,6 +118,7 @@ class ProposalEmailServiceTests(unittest.TestCase):
         self.assertIn("DADOS DO CLIENTE", text)
         self.assertIn("MENSAGEM DO CLIENTE", text)
         self.assertIn("AÇÃO NECESSÁRIA", text)
+        self.assertIn("Data de envio: 11/11/2026 às 14:51", text)
         self.assertIn("Valor ofertado: R$ 100.000,00", text)
         self.assertIn("cliente@example.com", html)
 
