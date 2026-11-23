@@ -1,17 +1,25 @@
 import os
 
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
+from sqlalchemy import URL, create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 load_dotenv()
 
-DATABASE_URL = (
-    f"mysql+pymysql://{os.getenv('MYSQL_USER')}:"
-    f"{os.getenv('MYSQL_PASSWORD')}@"
-    f"{os.getenv('MYSQL_HOST', 'localhost')}:"
-    f"{os.getenv('MYSQL_PORT', '3307')}/"
-    f"{os.getenv('MYSQL_DATABASE')}"
+required_settings = ("MYSQL_USER", "MYSQL_PASSWORD", "MYSQL_DATABASE")
+missing_settings = [name for name in required_settings if not os.getenv(name)]
+if missing_settings:
+    raise RuntimeError(
+        f"Configurações MySQL ausentes: {', '.join(missing_settings)}"
+    )
+
+DATABASE_URL = URL.create(
+    drivername="mysql+pymysql",
+    username=os.environ["MYSQL_USER"],
+    password=os.environ["MYSQL_PASSWORD"],
+    host=os.getenv("MYSQL_HOST", "localhost"),
+    port=int(os.getenv("MYSQL_PORT", "3307")),
+    database=os.environ["MYSQL_DATABASE"],
 )
 
 engine = create_engine(

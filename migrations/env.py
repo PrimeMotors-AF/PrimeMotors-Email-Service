@@ -1,6 +1,7 @@
 from logging.config import fileConfig
 
 from src.database.connection import Base, engine
+from src.models.emailRateLimitModel import EmailRateLimit
 from src.models.proposalModel import Proposal
 
 from sqlalchemy import pool
@@ -20,9 +21,6 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from src.database.connection import Base
-from src.models.proposalModel import Proposal
-
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
